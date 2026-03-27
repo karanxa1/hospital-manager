@@ -6,8 +6,9 @@ from uuid import UUID
 
 
 class AppointmentType(str, enum.Enum):
-    in_person = "in_person"
-    online = "online"
+    video_consultation = "video_consultation"
+    offline_checkup = "offline_checkup"
+
 
 
 class AppointmentCreate(BaseModel):
@@ -15,7 +16,7 @@ class AppointmentCreate(BaseModel):
     appointment_date: date
     start_time: str
     end_time: str
-    type: AppointmentType = AppointmentType.in_person
+    type: AppointmentType = AppointmentType.offline_checkup
     chief_complaint: Optional[str] = None
 
 

@@ -26,7 +26,7 @@ def _serialize_appointment(store: Store, appt: dict) -> dict:
         "start_time": appt.get("start_time"),
         "end_time": appt.get("end_time"),
         "status": appt.get("status"),
-        "type": appt.get("type") or "in_person",
+        "type": appt.get("type") or "offline_checkup",
         "chief_complaint": appt.get("chief_complaint"),
         "token_number": appt.get("token_number"),
         "payment_status": appt.get("payment_status") or "pending",
@@ -108,7 +108,7 @@ def doctor_today_queue(
                 "status": appt.get("status"),
                 "token_number": appt.get("token_number"),
                 "chief_complaint": appt.get("chief_complaint"),
-                "type": appt.get("type") or "in_person",
+                "type": appt.get("type") or "offline_checkup",
             }
         )
     return {"success": True, "data": result, "message": "Today's queue fetched"}

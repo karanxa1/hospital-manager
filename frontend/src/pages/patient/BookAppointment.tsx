@@ -35,6 +35,7 @@ export default function BookAppointment() {
   const [selectedDate, setSelectedDate] = useState("")
   const [slots, setSlots] = useState<Slot[]>([])
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null)
+  const [consultationType, setConsultationType] = useState<string>("offline_checkup")
   const [complaint, setComplaint] = useState("")
   const [loading, setLoading] = useState(false)
   const [booked, setBooked] = useState<any>(null)
@@ -66,6 +67,11 @@ export default function BookAppointment() {
     setStep(4)
   }
 
+  const handleTypeSelect = (type: string) => {
+    setConsultationType(type)
+    setStep(5)
+  }
+
   const handleBook = async () => {
     if (!selectedDoctor || !selectedSlot) return
     setLoading(true)
@@ -75,11 +81,11 @@ export default function BookAppointment() {
         appointment_date: selectedDate,
         start_time: selectedSlot.start_time,
         end_time: selectedSlot.end_time,
-        type: "in_person",
+        type: consultationType,
         chief_complaint: complaint,
       })
       setBooked(res.data.data)
-      setStep(5)
+      setStep(6)
       toast.success("Appointment booked!")
     } catch (err: any) {
       toast.error(err.response?.data?.detail?.message || "Booking failed")
@@ -100,6 +106,7 @@ export default function BookAppointment() {
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Doctor</span><span>{booked.doctor_name}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Type</span><span className="capitalize">{booked.type?.replace(/_/g, " ")}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Date</span><span>{booked.appointment_date}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Time</span><span>{booked.start_time} - {booked.end_time}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Token</span><span className="font-bold">#{booked.token_number}</span></div>
@@ -112,10 +119,10 @@ export default function BookAppointment() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        {["Select Doctor", "Pick Date", "Pick Time", "Confirm"].map((label, i) => (
+      <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap text-sm text-muted-foreground">
+        {["Select Doctor", "Pick Date", "Pick Time", "Type", "Confirm"].map((label, i) => (
           <span key={i} className={step > i ? "text-primary font-medium" : step === i + 1 ? "font-medium" : ""}>
-            {i + 1}. {label} {i < 3 && "→ "}
+            {i + 1}. {label} {i < 4 && "→ "}
           </span>
         ))}
       </div>
@@ -177,7 +184,34 @@ export default function BookAppointment() {
         </div>
       )}
 
-      {step === 4 && selectedDoctor && selectedSlot && (
+      {step === 4 && (
+        <div className="space-y-4 max-w-md">
+          <Button variant="ghost" onClick={() => setStep(3)}>← Back</Button>
+          <h3 className="text-lg font-semibold">Choose Consultation Method</h3>
+          <div className="grid grid-cols-1 gap-4">
+            <Card 
+              className={`cursor-pointer hover:border-primary transition-colors ${consultationType === 'video_consultation' ? 'border-primary ring-1 ring-primary' : ''}`}
+              onClick={() => handleTypeSelect('video_consultation')}
+            >
+              <CardContent className="pt-6">
+                <h4 className="font-bold">Video Call</h4>
+                <p className="text-sm text-muted-foreground">Consultancy only. Perfect for follow-ups or initial discussions from home.</p>
+              </CardContent>
+            </Card>
+            <Card 
+              className={`cursor-pointer hover:border-primary transition-colors ${consultationType === 'offline_checkup' ? 'border-primary ring-1 ring-primary' : ''}`}
+              onClick={() => handleTypeSelect('offline_checkup')}
+            >
+              <CardContent className="pt-6">
+                <h4 className="font-bold">Offline Checkup</h4>
+                <p className="text-sm text-muted-foreground">In-person visit to the hospital clinic for physical examination.</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {step === 5 && selectedDoctor && selectedSlot && (
         <Card className="max-w-lg">
           <CardHeader>
             <CardTitle>Confirm Booking</CardTitle>
@@ -185,6 +219,12 @@ export default function BookAppointment() {
           <CardContent className="space-y-4">
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Doctor</span><span>Dr. {selectedDoctor.user_name}</span></div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Type</span>
+                <Badge variant="secondary" className="capitalize">
+                  {consultationType.replace(/_/g, " ")}
+                </Badge>
+              </div>
               <div className="flex justify-between"><span className="text-muted-foreground">Date</span><span>{selectedDate}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Time</span><span>{selectedSlot.start_time} - {selectedSlot.end_time}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Fee</span><span>{formatCurrency(selectedDoctor.consultation_fee)}</span></div>
@@ -199,7 +239,7 @@ export default function BookAppointment() {
               />
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep(3)}>← Back</Button>
+              <Button variant="outline" onClick={() => setStep(4)}>← Back</Button>
               <Button onClick={handleBook} disabled={loading} className="flex-1">
                 {loading ? "Booking..." : "Confirm Booking"}
               </Button>
@@ -210,3 +250,4 @@ export default function BookAppointment() {
     </div>
   )
 }
+

@@ -20,6 +20,7 @@ interface Appointment {
   chief_complaint: string | null
   payment_amount: number
   payment_status: string
+  type: string
 }
 
 const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -93,6 +94,10 @@ export default function MyAppointments() {
                   <p className="font-medium">{appt.doctor_name}</p>
                   <p className="text-sm text-muted-foreground">{appt.doctor_specialization}</p>
                   <p className="text-sm">{appt.appointment_date} at {appt.start_time}</p>
+                  <Badge variant="outline" className="capitalize text-[10px] mt-1">
+                    {appt.type?.replace(/_/g, " ")}
+                  </Badge>
+
                 </div>
                 <div className="flex shrink-0 flex-col gap-2 sm:items-end sm:text-right">
                   <Badge className="w-fit" variant={statusColors[appt.status]}>{appt.status}</Badge>
@@ -117,6 +122,8 @@ export default function MyAppointments() {
                 <div className="min-w-0 space-y-1">
                   <p className="font-medium">{appt.doctor_name}</p>
                   <p className="text-sm">{appt.appointment_date} at {appt.start_time}</p>
+                  <p className="text-[10px] text-muted-foreground capitalize">{appt.type?.replace(/_/g, " ")}</p>
+
                 </div>
                 <Badge className="w-fit shrink-0" variant={statusColors[appt.status]}>{appt.status}</Badge>
               </CardContent>
