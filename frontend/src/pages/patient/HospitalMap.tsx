@@ -45,6 +45,7 @@ export default function HospitalMap() {
   const [hospitals, setHospitals] = useState<Hospital[]>([])
   const [loading, setLoading] = useState(true)
   const [activeCenter, setActiveCenter] = useState<[number, number] | null>(null)
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
 
   useEffect(() => {
     const fetchHospitals = async () => {
@@ -58,7 +59,31 @@ export default function HospitalMap() {
       }
     }
     fetchHospitals()
+
+    // Get User Location
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserLocation([pos.coords.latitude, pos.coords.longitude])
+        },
+        () => {
+          console.log("Location access denied")
+        }
+      )
+    }
   }, [])
+
+  const getDirections = (h: Hospital) => {
+    if (!userLocation) {
+      // Fallback: search-based directions if origin is unknown
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${h.latitude},${h.longitude}`, "_blank")
+      return
+    }
+    window.open(
+      `https://www.google.com/maps/dir/?api=1&origin=${userLocation[0]},${userLocation[1]}&destination=${h.latitude},${h.longitude}`,
+      "_blank"
+    )
+  }
 
   const defaultCenter: [number, number] = [18.5204, 73.8567] // Pune default
 
@@ -66,7 +91,7 @@ export default function HospitalMap() {
     <div className="p-6 h-[calc(100vh-4rem)] flex flex-col gap-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Find Hospitals</h1>
-        <p className="text-muted-foreground">Locate hospitals nearest to you</p>
+        <p className="text-muted-foreground">Locate hospitals nearest to you and get directions</p>
       </div>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
@@ -91,10 +116,23 @@ export default function HospitalMap() {
               <div className="divide-y">
                 {hospitals.map(h => (
                   <div key={h.id} className="p-4 hover:bg-accent/50 transition-colors">
-                    <h3 className="font-semibold">{h.name}</h3>
-                    <p className="text-sm text-muted-foreground mb-2 mt-1">
-                      {h.address}, {h.city}
-                    </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="font-semibold">{h.name}</h3>
+                        <p className="text-sm text-muted-foreground mb-2 mt-1">
+                          {h.address}, {h.city}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        title="Get Directions"
+                        onClick={() => getDirections(h)}
+                      >
+                        <span className="text-xs font-bold">DIR</span>
+                      </Button>
+                    </div>
                     <div className="flex flex-wrap gap-1 mb-3">
                       {h.specialties.map(spec => (
                         <Badge key={spec} variant="outline" className="text-xs">
@@ -131,13 +169,37 @@ export default function HospitalMap() {
             {hospitals.map(h => (
               <Marker key={h.id} position={[h.latitude, h.longitude]}>
                 <Popup>
-                  <div className="text-sm">
+                  <div className="text-sm min-w-[150px]">
                     <p className="font-bold mb-1">{h.name}</p>
-                    <p className="text-muted-foreground">{h.address}</p>
+                    <p className="text-muted-foreground text-xs mb-3">{h.address}</p>
+                    <Button 
+                      size="sm" 
+                      className="w-full h-8 text-xs"
+                      onClick={() => getDirections(h)}
+                    >
+                      Get Directions
+                    </Button>
                   </div>
                 </Popup>
               </Marker>
             ))}
+
+            {userLocation && (
+              <Marker 
+                position={userLocation}
+                icon={new Icon({
+                  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                  shadowUrl: markerShadow,
+                  iconSize: [25, 41],
+                  iconAnchor: [12, 41],
+                  popupAnchor: [1, -34],
+                  shadowSize: [41, 41]
+                })}
+              >
+                <Popup>You are here</Popup>
+              </Marker>
+            )}
+
             <FlyToLocation center={activeCenter} />
           </MapContainer>
         </div>
@@ -145,3 +207,4 @@ export default function HospitalMap() {
     </div>
   )
 }
+
