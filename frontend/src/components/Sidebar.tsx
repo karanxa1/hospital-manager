@@ -26,6 +26,7 @@ export function Sidebar({ mobileOpen = false, onNavigate }: SidebarProps) {
   const roleNavItems: Record<string, NavItem[]> = {
     patient: [
       { label: "Dashboard", href: "/patient/dashboard", icon: "O" },
+      { label: "Find Hospitals", href: "/patient/hospitals", icon: "M" },
       { label: "Book Appointment", href: "/patient/book", icon: "B" },
       { label: "My Appointments", href: "/patient/appointments", icon: "A" },
       { label: "Medical History", href: "/patient/history", icon: "H" },

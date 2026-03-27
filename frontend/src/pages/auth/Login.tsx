@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { BrandLogo } from "@/components/BrandLogo"
 import { toast } from "sonner"
 import { useAuthStore } from "@/store/authStore"
-import { loginWithGoogle, loginWithEmail, sendPhoneOtp, verifyPhoneOtp } from "@/utils/firebase"
+import { loginWithGoogle, loginWithEmail, sendPhoneOtp, verifyPhoneOtp, getAuthErrorMessage } from "@/utils/firebase"
 
 export default function Login() {
   const navigate = useNavigate()
@@ -35,7 +35,7 @@ export default function Login() {
       const user = await loginWithFirebase(idToken)
       toast.success("Signed in")
       redirect(user.role)
-    } catch (err: any) { toast.error(err.message) } finally { setLoading(false) }
+    } catch (err: any) { toast.error(getAuthErrorMessage(err)) } finally { setLoading(false) }
   }
 
   const handleEmail = async () => {
@@ -46,7 +46,7 @@ export default function Login() {
       const user = await loginWithFirebase(idToken)
       toast.success("Signed in")
       redirect(user.role)
-    } catch (err: any) { toast.error(err.message) } finally { setLoading(false) }
+    } catch (err: any) { toast.error(getAuthErrorMessage(err)) } finally { setLoading(false) }
   }
 
   const handleSendOtp = async () => {
@@ -57,7 +57,7 @@ export default function Login() {
       setConfirmationResult(result)
       setOtpSent(true)
       toast.success("OTP sent")
-    } catch (err: any) { toast.error(err.message) } finally { setLoading(false) }
+    } catch (err: any) { toast.error(getAuthErrorMessage(err)) } finally { setLoading(false) }
   }
 
   const handleVerifyOtp = async () => {
@@ -68,7 +68,7 @@ export default function Login() {
       const user = await loginWithFirebase(idToken)
       toast.success("Signed in")
       redirect(user.role)
-    } catch (err: any) { toast.error(err.message) } finally { setLoading(false) }
+    } catch (err: any) { toast.error(getAuthErrorMessage(err)) } finally { setLoading(false) }
   }
 
   return (

@@ -414,3 +414,25 @@ class Store:
         if not u:
             return None
         return self.patient_by_user(u["id"])
+
+    # --- hospitals ---
+    def hospitals_list(self) -> list[dict]:
+        out = []
+        for doc in self.db.collection("hospitals").stream():
+            out.append({"id": doc.id, **(doc.to_dict() or {})})
+        return out
+
+    def hospital_get(self, hid: str) -> dict | None:
+        snap = self.db.collection("hospitals").document(hid).get()
+        if not snap.exists:
+            return None
+        return {"id": snap.id, **(snap.to_dict() or {})}
+
+    def hospital_create(self, data: dict) -> str:
+        hid = str(uuid.uuid4())
+        self.db.collection("hospitals").document(hid).set(data)
+        return hid
+
+    def hospital_set(self, hid: str, data: dict) -> None:
+        self.db.collection("hospitals").document(hid).set(data, merge=True)
+

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 /* Tailwind v4 theme mapping - explicitly map CSS variables to Tailwind theme */
 @theme {

@@ -19,6 +19,7 @@ from app.routers.billing import router as billing_router
 from app.routers.queue import router as queue_router
 from app.routers.analytics import router as analytics_router
 from app.routers.walkin import router as walkin_router
+from app.routers.hospitals import router as hospitals_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -76,6 +77,7 @@ app.include_router(billing_router)
 app.include_router(queue_router)
 app.include_router(analytics_router)
 app.include_router(walkin_router)
+app.include_router(hospitals_router)
 
 
 @app.get("/")

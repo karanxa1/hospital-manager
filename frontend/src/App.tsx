@@ -11,6 +11,7 @@ import NotFound from "@/pages/NotFound"
 import TokenDisplay from "@/pages/TokenDisplay"
 
 import PatientDashboard from "@/pages/patient/Dashboard"
+import HospitalMap from "@/pages/patient/HospitalMap"
 import PatientProfile from "@/pages/patient/PatientProfile"
 import BookAppointment from "@/pages/patient/BookAppointment"
 import MyAppointments from "@/pages/patient/MyAppointments"
@@ -44,6 +45,7 @@ export default function App() {
         <Route element={<ProtectedRoute allowedRoles={["patient"]} />}>
           <Route element={<RoleLayout />}>
             <Route path="/patient/dashboard" element={<PatientDashboard />} />
+            <Route path="/patient/hospitals" element={<HospitalMap />} />
             <Route path="/patient/book" element={<BookAppointment />} />
             <Route path="/patient/appointments" element={<MyAppointments />} />
             <Route path="/patient/history" element={<MedicalHistory />} />

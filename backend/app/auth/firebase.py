@@ -35,7 +35,7 @@ def init_firebase():
 def verify_firebase_token(id_token: str) -> dict | None:
     init_firebase()
     try:
-        decoded = auth.verify_id_token(id_token)
+        decoded = auth.verify_id_token(id_token, clock_skew_seconds=60)
         return decoded
     except Exception as e:
         logger.warning(f"Firebase token verification failed: {e}")

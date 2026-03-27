@@ -47,11 +47,19 @@ def firebase_login(body: FirebaseLoginRequest, store: Store = Depends(get_store)
     if not row and email:
         row = store.user_by_email(email)
         if row:
-            uid_str = row["id"]
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"success": False, "message": "Email already associated with another account"},
+            )
+            
     if not row and phone:
         row = store.user_by_phone(phone)
         if row:
-            uid_str = row["id"]
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"success": False, "message": "Phone number already associated with another account"},
+            )
+
 
     if not row:
         effective_email = email

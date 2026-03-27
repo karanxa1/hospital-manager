@@ -59,4 +59,23 @@ export async function firebaseSignOut() {
   await signOut(auth)
 }
 
+export function getAuthErrorMessage(error: any): string {
+  const code = error?.code || "";
+  const msg = error?.message || "An unknown error occurred.";
+  
+  if (code === "auth/email-already-in-use") return "This email is already registered. Please sign in instead.";
+  if (code === "auth/weak-password") return "Password should be at least 6 characters.";
+  if (code === "auth/invalid-email") return "Please enter a valid email address.";
+  if (code === "auth/user-not-found" || code === "auth/wrong-password" || code === "auth/invalid-credential") return "Invalid email or password.";
+  if (code === "auth/operation-not-allowed") return "This sign-in method is not enabled.";
+  if (code === "auth/too-many-requests") return "Too many failed attempts. Please try again later.";
+  if (code === "auth/user-disabled") return "This account has been disabled.";
+  if (code === "auth/invalid-verification-code") return "Invalid OTP code entered.";
+  if (code === "auth/invalid-verification-id") return "OTP verification session expired.";
+  
+  // Return the raw message nicely formatted if not matching our list, removing "Firebase: Error (auth/...)" prefix if it exists
+  const cleanMsg = msg.replace(/^.*?Firebase:\s*/, "").replace(/ \([^)]+\)/, "");
+  return cleanMsg || msg;
+}
+
 export { auth }
