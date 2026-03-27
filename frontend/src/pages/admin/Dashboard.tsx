@@ -75,6 +75,14 @@ export default function AdminDashboard() {
     fetchData()
   }, [])
 
+  const triggerSync = async (city: string = "Pune") => {
+    toast.promise(api.post(`/api/v1/hospitals/sync?city=${city}`), {
+      loading: `Syncing hospitals from ${city}...`,
+      success: (res) => `Successfully added ${res.data.data.added} new hospitals!`,
+      error: "Sync failed. Please try again.",
+    })
+  }
+
   if (loading || !overview) {
     return (
       <div className="p-6 space-y-6">
@@ -359,6 +367,15 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </Link>
+        <Card 
+          className="hover:shadow-md transition-shadow cursor-pointer bg-primary text-primary-foreground"
+          onClick={() => triggerSync("Pune")}
+        >
+          <CardContent className="pt-6 text-center">
+            <p className="font-medium">Sync Hospitals</p>
+            <p className="text-xs opacity-70 mt-1">Import from OpenStreetMap</p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
