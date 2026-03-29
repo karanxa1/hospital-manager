@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app"
+import { getAnalytics } from "firebase/analytics"
 import {
   getAuth,
   GoogleAuthProvider,
@@ -17,9 +18,11 @@ const firebaseConfig = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 }
 
 const app = initializeApp(firebaseConfig)
+const analytics = getAnalytics(app)
 const auth = getAuth(app)
 const googleProvider = new GoogleAuthProvider()
 
@@ -78,4 +81,4 @@ export function getAuthErrorMessage(error: any): string {
   return cleanMsg || msg;
 }
 
-export { auth }
+export { auth, analytics }

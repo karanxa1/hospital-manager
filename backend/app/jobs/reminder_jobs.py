@@ -20,9 +20,10 @@ def send_24h_reminders():
     try:
         tomorrow = date.today() + timedelta(days=1)
         ds = tomorrow.isoformat()
-        for appt in store.appointments_iter():
-            if appt.get("appointment_date") != ds:
-                continue
+        
+        # Only fetch appointments for tomorrow
+        for doc in store.db.collection("appointments").where("appointment_date", "==", ds).stream():
+            appt = {"id": doc.id, **(doc.to_dict() or {})}
             if appt.get("status") not in ("pending", "confirmed"):
                 continue
             patient = store.patient_get(appt["patient_id"])
@@ -52,9 +53,9 @@ def send_1h_reminders():
         window_start = now + timedelta(minutes=50)
         window_end = now + timedelta(minutes=70)
 
-        for appt in store.appointments_iter():
-            if appt.get("appointment_date") != today.isoformat():
-                continue
+        # Only fetch appointments for today
+        for doc in store.db.collection("appointments").where("appointment_date", "==", today.isoformat()).stream():
+            appt = {"id": doc.id, **(doc.to_dict() or {})}
             if appt.get("status") not in ("pending", "confirmed"):
                 continue
             st = datetime.strptime(appt["start_time"], "%H:%M").time()

@@ -42,6 +42,7 @@ def list_all_appointments(
     date_to: date = Query(None),
     doctor_id: UUID = Query(None),
     status: str = Query(None),
+    limit: int = Query(None),
     store: Store = Depends(get_store),
     _current_user: User = Depends(require_admin_or_doctor),
 ):
@@ -50,6 +51,7 @@ def list_all_appointments(
         date_to=date_to,
         doctor_id=str(doctor_id) if doctor_id else None,
         status=status,
+        limit=limit,
     )
     return {
         "success": True,

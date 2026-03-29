@@ -37,16 +37,14 @@ export default function AnalyticsDashboard() {
 
   const fetchData = async () => {
     try {
-      const [ovRes, apptRes, revRes, utilRes] = await Promise.all([
-        api.get("/api/v1/analytics/overview"),
-        api.get(`/api/v1/analytics/appointments?range=${range}`),
-        api.get(`/api/v1/analytics/revenue?range=${range}`),
-        api.get("/api/v1/analytics/doctor-utilization"),
-      ])
-      setOverview(ovRes.data.data)
-      setApptTrend(apptRes.data.data)
-      setRevenueTrend(revRes.data.data)
-      setUtilization(utilRes.data.data)
+      setLoading(true);
+      const res = await api.get("/api/v1/analytics/dashboard-summary");
+      const summary = res.data.data;
+      
+      setOverview(summary.overview || {});
+      setApptTrend(summary.charts?.appointmentsTrend || []);
+      setRevenueTrend(summary.charts?.revenueTrend || []);
+      setUtilization(summary.charts?.doctorUtilization || []);
     } catch {
       toast.error("Failed to load analytics")
     } finally {

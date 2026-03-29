@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  Building2,
 } from "lucide-react"
 import {
   LineChart,
@@ -39,6 +40,7 @@ import {
 interface Overview {
   total_patients: number
   total_doctors: number
+  total_hospitals: number
   appointments_today: number
   appointments_this_month: number
   revenue_this_month: number
@@ -85,16 +87,20 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      const [ovRes, apptRes, utilRes, recentRes] = await Promise.all([
-        api.get("/api/v1/analytics/overview"),
-        api.get("/api/v1/analytics/appointments?range=7d"),
-        api.get("/api/v1/analytics/doctor-utilization"),
-        api.get("/api/v1/appointments", { params: { status: "pending" } }),
-      ])
-      setOverview(ovRes.data.data)
-      setApptTrend(apptRes.data.data)
-      setUtilization(utilRes.data.data)
-      setRecentAppts(recentRes.data.data.slice(0, 10))
+      const summaryRes = await api.get("/api/v1/analytics/dashboard-summary");
+      const summary = summaryRes.data.data;
+      
+      setOverview(summary.overview || {});
+      setApptTrend(summary.charts?.appointmentsTrend || []);
+      setUtilization(summary.charts?.doctorUtilization || []);
+      
+      // If recent appointments are included in summary, keep it, else fetch explicitly
+      if (summary.recentAppointments) {
+        setRecentAppts(summary.recentAppointments || []);
+      } else {
+        const recentRes = await api.get("/api/v1/appointments", { params: { status: "pending", limit: 10 } });
+        setRecentAppts(recentRes.data.data);
+      }
     } catch {
       toast.error("Failed to load analytics data")
     } finally {
@@ -131,8 +137,8 @@ export default function AdminDashboard() {
             <Skeleton className="h-10 w-32 bg-white/10" />
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32 bg-white/10 rounded-2xl" />)}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-32 bg-white/10 rounded-2xl" />)}
         </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <Skeleton className="h-[400px] lg:col-span-2 bg-white/10 rounded-3xl" />
@@ -175,7 +181,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatsCard 
           title="Total Patients" 
           value={overview.total_patients} 
@@ -189,6 +195,13 @@ export default function AdminDashboard() {
           icon={<Activity className="h-5 w-5 text-emerald-400" />} 
           trend="2 new this week"
           color="emerald"
+        />
+        <StatsCard 
+          title="Hospitals" 
+          value={overview.total_hospitals} 
+          icon={<Building2 className="h-5 w-5 text-cyan-400" />} 
+          trend="Real-world & dummy"
+          color="cyan"
         />
         <StatsCard 
           title="Daily Appointments" 
@@ -456,6 +469,7 @@ function StatsCard({ title, value, icon, trend, color }: any) {
   const colorMap: any = {
     blue: "hover:shadow-blue-500/10 border-blue-500/10",
     emerald: "hover:shadow-emerald-500/10 border-emerald-500/10",
+    cyan: "hover:shadow-cyan-500/10 border-cyan-500/10",
     amber: "hover:shadow-amber-500/10 border-amber-500/10",
     purple: "hover:shadow-purple-500/10 border-purple-500/10"
   }

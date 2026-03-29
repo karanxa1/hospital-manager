@@ -1,73 +1,63 @@
-# React + TypeScript + Vite
+# Clinic Management Platform - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the frontend application for the Clinic Management Platform, built with modern web tools for performance and scalability.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Framework**: [React](https://react.dev/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Build Tool**: [Vite](https://vitejs.dev/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **UI Components**: [shadcn/ui](https://ui.shadcn.com/)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Charting**: [Recharts](https://recharts.org/)
+- **HTTP Client**: [Axios](https://axios-http.com/)
 
-## React Compiler
+## Core Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Role-Based Workflows**:
+  - **Admin Dashboard**: Real-time analytics, revenue tracking, and complete system oversight (optimized to drastically reduce Firestore read overhead).
+  - **Doctor Portal**: Queue management, digital medical records (EHR), and patient appointment management.
+  - **Patient App**: Easy appointment scheduling, record history, and profile management.
+- **Walk-in & Token Management**: Dedicated screens for front-desk walk-ins and a live TV token display for waiting rooms.
+- **Seamless Authentication**: Integrates securely with Google OAuth and custom JWT flow.
+- **Sleek AMOLED Design**: High-contrast, completely tailored dark-mode UI with sophisticated Framer Motion animations.
 
-## Expanding the ESLint configuration
+## Development Setup
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 1. Installation
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Ensure you have Node.js (v18+) installed, then install the local dependencies:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+`ash
+cd frontend
+npm install
+`
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### 2. Environment Variables
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Create a \.env\ file in the \rontend\ directory based on the configuration required to connect to the backend and Google services:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+`env
+VITE_API_BASE_URL=http://localhost:8000
+VITE_GOOGLE_CLIENT_ID=your_google_client_id_here
+`
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+*(Refer to the project's root \SETUP.md\ for backend setup instructions if you haven't started the FastAPI instance yet).*
+
+### 3. Running the App
+
+Start the Vite development server:
+
+`ash
+npm run dev
+`
+
+By default, the application will be accessible at [http://localhost:5173](http://localhost:5173).
+
+## Performance Notes ??
+
+This frontend is intricately bound to the Python FastAPI backend interacting with Firebase/Firestore. Recent optimizations have specifically tailored the React query behaviors to help stay well within Firestore constraints:
+- Heavy metric components (like the Command Center dashboard graphs) utilize cache keys.
+- Bulk queries utilize precise offset/limit logic preventing excessive frontend data pulls.
+- \useEffect\ dependency safety nets have been checked to eliminate recursive API loop rendering.

@@ -50,6 +50,19 @@ class Store:
     def users_all(self) -> list[dict]:
         return [{"id": d.id, **(d.to_dict() or {})} for d in self.db.collection("users").stream()]
 
+    def users_by_ids(self, user_ids: set) -> dict:
+        result = {}
+        refs = [self.db.collection("users").document(uid) for uid in user_ids if uid]
+        if not refs:
+            return result
+        chunk_size = 100
+        for i in range(0, len(refs), chunk_size):
+            chunk = refs[i:i+chunk_size]
+            for doc in self.db.get_all(chunk):
+                if doc.exists:
+                    result[doc.id] = {"id": doc.id, **(doc.to_dict() or {})}
+        return result
+
     # --- patients ---
     def patient_get(self, pid: str) -> dict | None:
         snap = self.db.collection("patients").document(pid).get()
@@ -73,9 +86,20 @@ class Store:
 
     def patients_list(self, search: str | None) -> list[dict]:
         out: list[dict] = []
-        for doc in self.db.collection("patients").stream():
+        
+        # Load patients first
+        patient_docs = list(self.db.collection("patients").stream())
+        
+        # Collect distinct user_ids
+        user_ids = {doc.to_dict().get("user_id") for doc in patient_docs}
+        user_ids = {uid for uid in user_ids if uid}
+        
+        # Fetch only the required users to save reads and time
+        users_by_id = self.users_by_ids(user_ids)
+        
+        for doc in patient_docs:
             row = {"id": doc.id, **(doc.to_dict() or {})}
-            u = self.user_get(row.get("user_id", ""))
+            u = users_by_id.get(row.get("user_id", ""))
             if not u or not u.get("is_active", True):
                 continue
             if search:
@@ -104,9 +128,16 @@ class Store:
 
     def doctors_list(self, specialization: str | None = None) -> list[dict]:
         out = []
-        for doc in self.db.collection("doctors").stream():
+        doctor_docs = list(self.db.collection("doctors").stream())
+        
+        user_ids = {doc.to_dict().get("user_id") for doc in doctor_docs}
+        user_ids = {uid for uid in user_ids if uid}
+        
+        users_by_id = self.users_by_ids(user_ids)
+                
+        for doc in doctor_docs:
             d = {"id": doc.id, **(doc.to_dict() or {})}
-            u = self.user_get(d.get("user_id", ""))
+            u = users_by_id.get(d.get("user_id", ""))
             if not u or not u.get("is_active", True):
                 continue
             if specialization and d.get("specialization") != specialization:
@@ -213,10 +244,10 @@ class Store:
     def appointments_for_doctor_date(self, doctor_id: str, d: date) -> list[dict]:
         ds = d.isoformat()
         rows = []
-        for doc in self.db.collection("appointments").where("doctor_id", "==", doctor_id).stream():
+        # Filter by both doctor_id and appointment_date to minimize reads
+        for doc in self.db.collection("appointments").where("doctor_id", "==", doctor_id).where("appointment_date", "==", ds).stream():
             row = {"id": doc.id, **(doc.to_dict() or {})}
-            if row.get("appointment_date") == ds:
-                rows.append(row)
+            rows.append(row)
         return rows
 
     def appointments_filter(
@@ -225,8 +256,22 @@ class Store:
         date_to: date | None = None,
         doctor_id: str | None = None,
         status: str | None = None,
+        limit: int | None = None,
     ) -> list[dict]:
-        rows = list(self.appointments_iter())
+        q = self.db.collection("appointments")
+        
+        # Apply the most selective filter to reduce Firestore reads.
+        # We can safely use one equality filter without requiring complex indexes.
+        if doctor_id:
+            q = q.where("doctor_id", "==", str(doctor_id))
+        elif status:
+            q = q.where("status", "==", status)
+            
+        if limit and not date_from and not date_to and not doctor_id:
+            q = q.limit(limit)
+            
+        rows = [{"id": doc.id, **(doc.to_dict() or {})} for doc in q.stream()]
+        
         out = []
         for r in rows:
             ad = r.get("appointment_date")
@@ -235,11 +280,15 @@ class Store:
             if date_to and ad > date_to.isoformat():
                 continue
             if doctor_id and r.get("doctor_id") != str(doctor_id):
+                # Filter again in case of caching or logic updates, though usually exact
                 continue
             if status and r.get("status") != status:
                 continue
             out.append(r)
+            
         out.sort(key=lambda x: x.get("appointment_date", ""), reverse=True)
+        if limit:
+            out = out[:limit]
         return out
 
     def max_token(self, doctor_id: str, d: date) -> int:
@@ -256,12 +305,10 @@ class Store:
         ds = d.isoformat()
         st, et = start.strftime("%H:%M"), end.strftime("%H:%M")
         active = {"pending", "confirmed"}
-        for doc in self.db.collection("appointments").where("doctor_id", "==", doctor_id).stream():
+        for doc in self.db.collection("appointments").where("doctor_id", "==", doctor_id).where("appointment_date", "==", ds).stream():
             if doc.id == exclude_id:
                 continue
             row = doc.to_dict() or {}
-            if row.get("appointment_date") != ds:
-                continue
             if row.get("status") not in active:
                 continue
             rs, re = row.get("start_time", ""), row.get("end_time", "")

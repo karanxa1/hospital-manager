@@ -486,6 +486,45 @@ def seed():
     print(f"  Admin: {admin_id}")
 
     # ------------------------------------------------------------------
+    # 1.5 Hospitals (from doctor list)
+    # ------------------------------------------------------------------
+    hospital_name_to_id = {}
+    hospitals_to_seed = set(doc["hospital"] for doc in ALL_DOCTORS)
+    
+    # Coordinates for mapping (approximate for Pune/Mumbai centers)
+    coords = {
+        "Ruby Hall Clinic, Pune": {"lat": 18.5324, "lng": 73.8770},
+        "Sahyadri Hospital, Pune": {"lat": 18.5134, "lng": 73.8329},
+        "Deenanath Mangeshkar Hospital, Pune": {"lat": 18.5085, "lng": 73.8340},
+        "Jehangir Hospital, Pune": {"lat": 18.5276, "lng": 73.8787},
+        "KEM Hospital, Pune": {"lat": 18.5222, "lng": 73.8687},
+        "Lilavati Hospital, Mumbai": {"lat": 19.0514, "lng": 72.8285},
+        "P.D. Hinduja Hospital, Mumbai": {"lat": 19.0345, "lng": 72.8398},
+        "Kokilaben Dhirubhai Ambani Hospital, Mumbai": {"lat": 19.1311, "lng": 72.8252},
+        "Tata Memorial Hospital, Mumbai": {"lat": 19.0041, "lng": 72.8427},
+        "Breach Candy Hospital, Mumbai": {"lat": 18.9712, "lng": 72.8052},
+        "Jaslok Hospital, Mumbai": {"lat": 18.9718, "lng": 72.8093},
+        "Nanavati Max Super Speciality Hospital, Mumbai": {"lat": 19.0967, "lng": 72.8407},
+    }
+
+    print("Seeding Hospitals...")
+    for hname in hospitals_to_seed:
+        hid = str(uuid.uuid4())
+        loc = coords.get(hname, {"lat": 18.5204, "lng": 73.8567}) # default to Pune center
+        store.hospital_set(hid, {
+            "name": hname,
+            "address": hname.split(",")[0] + " Main Road",
+            "city": hname.split(",")[1].strip() if "," in hname else "Pune",
+            "latitude": loc["lat"],
+            "longitude": loc["lng"],
+            "phone": "+91 22 1234 5678",
+            "created_at": ts
+        })
+        hospital_name_to_id[hname] = hid
+    print(f"  Total Hospitals: {len(hospital_name_to_id)}")
+
+
+    # ------------------------------------------------------------------
     # 2. Doctors (users + doctor profiles + availability)
     # ------------------------------------------------------------------
     for doc in ALL_DOCTORS:
@@ -517,6 +556,7 @@ def seed():
                 "consultation_fee": doc["consultation_fee"],
                 "avg_consultation_minutes": random.choice([15, 20, 30]),
                 "hospital": doc["hospital"],
+                "hospital_id": hospital_name_to_id.get(doc["hospital"]),
             }
         )
         created_ids["doctors"].append({"id": did, "user_id": uid, "name": doc["name"]})
@@ -619,7 +659,7 @@ def seed():
         "future": ["pending", "confirmed"],
     }
 
-    for day_offset in range(-30, 15):
+    for day_offset in range(-7, 4):
         appt_date = today + timedelta(days=day_offset)
         if appt_date.weekday() == 6:  # skip Sunday
             continue

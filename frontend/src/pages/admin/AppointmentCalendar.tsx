@@ -42,6 +42,11 @@ export default function AppointmentCalendar() {
       if (filterDate) params.date_to = filterDate
       if (filterDoctor !== "all") params.doctor_id = filterDoctor
       if (filterStatus !== "all") params.status = filterStatus
+      
+      // Prevent fetching the entire database if no filters are applied
+      if (!filterDate && filterDoctor === "all" && filterStatus === "all") {
+        params.limit = 50;
+      }
 
       const res = await appointmentApi.listAll(params)
       setAppointments(res.data.data)
