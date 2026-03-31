@@ -20,6 +20,9 @@ from app.routers.queue import router as queue_router
 from app.routers.analytics import router as analytics_router
 from app.routers.walkin import router as walkin_router
 from app.routers.hospitals import router as hospitals_router
+from app.cache import get_cache
+from app.fs_client import get_cached_store_instance
+from app.cached_store import register_warmers
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -30,7 +33,20 @@ async def lifespan(app: FastAPI):
     logger.info("Starting up...")
     init_firebase()
     logger.info("Firebase / Firestore ready (no SQL migrations)")
+
+    # Initialize cache warming
+    logger.info("Setting up cache warming...")
+    store = get_cached_store_instance()
+    register_warmers(store)
+    cache = get_cache()
+    await cache.start_warming_loop()
+    logger.info("Cache warming loop started (30 minute interval)")
+
     yield
+
+    # Shutdown: stop cache warming
+    logger.info("Stopping cache warming loop...")
+    await cache.stop_warming_loop()
     logger.info("Shutting down...")
 
 
@@ -88,6 +104,29 @@ async def root():
 @app.get("/health")
 async def health():
     return {"success": True, "message": "Healthy", "data": {"status": "ok"}}
+
+
+@app.get("/cache/stats")
+async def cache_stats():
+    """Get cache statistics for monitoring."""
+    cache = get_cache()
+    return {"success": True, "message": "Cache stats", "data": cache.stats()}
+
+
+@app.post("/cache/warm")
+async def cache_warm():
+    """Manually trigger cache warming (admin use)."""
+    cache = get_cache()
+    result = cache.warm()
+    return {"success": True, "message": "Cache warmed", "data": result}
+
+
+@app.post("/cache/clear")
+async def cache_clear():
+    """Clear all cached entries (admin use)."""
+    cache = get_cache()
+    cache.clear()
+    return {"success": True, "message": "Cache cleared", "data": None}
 
 
 if __name__ == "__main__":

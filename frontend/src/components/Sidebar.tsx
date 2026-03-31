@@ -1,10 +1,10 @@
 import { Link, useLocation } from "react-router-dom"
-import { useAuth } from "@/hooks/useAuth"
 import { BrandLogo } from "@/components/BrandLogo"
 import { cn } from "@/utils/cn"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
+import { useAuthStore } from "@/store/authStore"
 
 type SidebarProps = {
   /** When false on small screens, drawer is off-canvas */
@@ -20,7 +20,7 @@ interface NavItem {
 }
 
 export function Sidebar({ mobileOpen = false, onNavigate }: SidebarProps) {
-  const { user, logout } = useAuth()
+  const { user, logout } = useAuthStore()
   const location = useLocation()
 
   const roleNavItems: Record<string, NavItem[]> = {

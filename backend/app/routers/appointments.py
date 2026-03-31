@@ -3,7 +3,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.auth.dependencies import get_current_user, require_admin_or_doctor, require_doctor
+from app.auth.dependencies import (
+    get_current_user,
+    require_admin_or_doctor,
+    require_doctor,
+)
 from app.domain_types import User, UserRole
 from app.fs_client import get_store
 from app.firestore_store import Store
@@ -13,14 +17,17 @@ from app.services.appointment_service import book_appointment
 router = APIRouter(prefix="/api/v1/appointments", tags=["appointments"])
 
 
-def _serialize_appointment(store: Store, appt: dict) -> dict:
-    doctor = store.doctor_get(appt["doctor_id"])
-    doc_user = store.user_get(doctor["user_id"]) if doctor else None
+def _serialize_appointment(
+    appt: dict, doctor: dict | None = None, doc_user: dict | None = None
+) -> dict:
+    """Serialize a single appointment with pre-fetched doctor/user data."""
     return {
         "id": appt["id"],
         "patient_id": appt.get("patient_id"),
         "doctor_id": appt.get("doctor_id"),
-        "doctor_name": f"Dr. {doc_user['name']}" if doc_user and doc_user.get("name") else "",
+        "doctor_name": f"Dr. {doc_user['name']}"
+        if doc_user and doc_user.get("name")
+        else "",
         "doctor_specialization": doctor.get("specialization") if doctor else "",
         "appointment_date": appt.get("appointment_date"),
         "start_time": appt.get("start_time"),
@@ -30,10 +37,36 @@ def _serialize_appointment(store: Store, appt: dict) -> dict:
         "chief_complaint": appt.get("chief_complaint"),
         "token_number": appt.get("token_number"),
         "payment_status": appt.get("payment_status") or "pending",
-        "payment_amount": float(appt["payment_amount"]) if appt.get("payment_amount") is not None else 0,
+        "payment_amount": float(appt["payment_amount"])
+        if appt.get("payment_amount") is not None
+        else 0,
         "cashfree_order_id": appt.get("cashfree_order_id"),
         "created_at": appt.get("created_at") or "",
     }
+
+
+def _batch_serialize_appointments(store: Store, appointments: list[dict]) -> list[dict]:
+    """
+    Batch serialize appointments with efficient doctor/user fetching.
+    Avoids N+1 queries by pre-fetching all required doctors and users.
+    """
+    if not appointments:
+        return []
+
+    # Collect all unique doctor IDs
+    doctor_ids = {a.get("doctor_id") for a in appointments if a.get("doctor_id")}
+
+    # Use cached doctors_list which already has _user embedded
+    all_doctors = store.doctors_list(None)
+    doctors_map = {d["id"]: d for d in all_doctors}
+
+    result = []
+    for appt in appointments:
+        doctor = doctors_map.get(appt.get("doctor_id"))
+        doc_user = doctor.get("_user") if doctor else None
+        result.append(_serialize_appointment(appt, doctor, doc_user))
+
+    return result
 
 
 @router.get("", response_model=dict)
@@ -55,7 +88,7 @@ def list_all_appointments(
     )
     return {
         "success": True,
-        "data": [_serialize_appointment(store, a) for a in rows],
+        "data": _batch_serialize_appointments(store, rows),
         "message": "Appointments fetched",
     }
 
@@ -76,7 +109,7 @@ def my_appointments(
     appointments = store.appointments_for_patient(patient["id"])
     return {
         "success": True,
-        "data": [_serialize_appointment(store, a) for a in appointments],
+        "data": _batch_serialize_appointments(store, appointments),
         "message": "Appointments fetched",
     }
 
@@ -94,11 +127,21 @@ def doctor_today_queue(
         )
     today = date.today()
     appointments = store.appointments_for_doctor_date(doctor["id"], today)
-    appointments.sort(key=lambda x: (x.get("token_number") is None, x.get("token_number") or 0))
+    appointments.sort(
+        key=lambda x: (x.get("token_number") is None, x.get("token_number") or 0)
+    )
+
+    # Batch fetch all patients and users to avoid N+1 queries
+    patient_ids = {a.get("patient_id") for a in appointments if a.get("patient_id")}
+
+    # Use patients_list which has _user embedded (cached)
+    all_patients = store.patients_list(None)
+    patients_map = {p["id"]: p for p in all_patients}
+
     result = []
     for appt in appointments:
-        patient = store.patient_get(appt["patient_id"])
-        p_user = store.user_get(patient["user_id"]) if patient else None
+        patient = patients_map.get(appt.get("patient_id"))
+        p_user = patient.get("_user") if patient else None
         result.append(
             {
                 "id": appt["id"],
@@ -142,7 +185,9 @@ def create_appointment(
             chief_complaint=body.chief_complaint or "",
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail={"success": False, "message": str(e)})
+        raise HTTPException(
+            status_code=400, detail={"success": False, "message": str(e)}
+        )
     return {
         "success": True,
         "data": _serialize_appointment(store, appt),

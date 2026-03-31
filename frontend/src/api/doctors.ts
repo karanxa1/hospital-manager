@@ -4,6 +4,9 @@ export const doctorApi = {
   list: (specialization?: string) =>
     api.get("/api/v1/doctors", { params: { specialization } }),
 
+  getMe: () =>
+    api.get("/api/v1/doctors/me"),
+
   get: (id: string) =>
     api.get(`/api/v1/doctors/${id}`),
 

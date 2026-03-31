@@ -21,6 +21,7 @@ router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 class FirebaseLoginRequest(BaseModel):
     id_token: str
+    role: str | None = None
 
 
 @router.post("/firebase-login")
@@ -76,13 +77,14 @@ def firebase_login(body: FirebaseLoginRequest, store: Store = Depends(get_store)
 
         uid_str = str(uuid.uuid4())
         ts = _now_iso()
+        requested_role = body.role if body.role in [UserRole.patient.value, UserRole.doctor.value] else UserRole.patient.value
         store.user_set(
             uid_str,
             {
                 "email": effective_email,
                 "name": name or (email.split("@")[0] if email else "User"),
                 "profile_picture": picture,
-                "role": UserRole.patient.value,
+                "role": requested_role,
                 "google_id": firebase_uid,
                 "phone": phone,
                 "is_active": True,
@@ -108,6 +110,8 @@ def firebase_login(body: FirebaseLoginRequest, store: Store = Depends(get_store)
     u = User.from_firestore(uid_str, {k: v for k, v in row.items() if k != "id"})
     if u.role == UserRole.patient:
         store.patient_ensure(uid_str)
+    elif u.role == UserRole.doctor:
+        store.doctor_ensure(uid_str)
 
     jwt_token = create_access_token({"sub": uid_str, "role": u.role.value})
 

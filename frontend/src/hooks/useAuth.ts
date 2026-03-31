@@ -1,25 +1,28 @@
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { useAuthStore } from "@/store/authStore"
 
 export function useAuth() {
-  const { user, token, isAuthenticated, isLoading, logout, fetchMe, loginWithFirebase } = useAuthStore()
-  const [initializing, setInitializing] = useState(true)
+  const {
+    user,
+    token,
+    isAuthenticated,
+    isLoading,
+    hasHydrated,
+    logout,
+    fetchMe,
+    loginWithFirebase,
+    initializeAuth,
+  } = useAuthStore()
 
   useEffect(() => {
-    const initAuth = async () => {
-      if (token) {
-        await fetchMe()
-      }
-      setInitializing(false)
-    }
-    initAuth()
-  }, [])
+    void initializeAuth()
+  }, [initializeAuth])
 
   return {
     user,
     token,
     isAuthenticated,
-    isLoading: isLoading || initializing,
+    isLoading: isLoading || !hasHydrated,
     logout,
     fetchMe,
     loginWithFirebase,

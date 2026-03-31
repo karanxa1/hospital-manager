@@ -44,11 +44,33 @@ export async function signUpWithEmail(email: string, password: string) {
   return { user: result.user, idToken }
 }
 
+// Declare global to allow clearing
+declare global {
+  interface Window {
+    recaptchaVerifier?: RecaptchaVerifier
+  }
+}
+
 export async function sendPhoneOtp(phoneNumber: string, recaptchaContainerId: string) {
-  const recaptcha = new RecaptchaVerifier(auth, recaptchaContainerId, {
+  // Clear any existing recaptcha instance to avoid DOM detachment issues when switching tabs
+  if (window.recaptchaVerifier) {
+    try {
+      window.recaptchaVerifier.clear()
+    } catch (e) {
+      console.warn("Error clearing recaptcha:", e)
+    }
+    window.recaptchaVerifier = undefined;
+  }
+
+  const container = document.getElementById(recaptchaContainerId);
+  if (container) container.innerHTML = "";
+  
+  window.recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerId, {
     size: "invisible",
   })
-  const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptcha)
+
+  await window.recaptchaVerifier.render()
+  const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier)
   return confirmationResult
 }
 
@@ -75,10 +97,10 @@ export function getAuthErrorMessage(error: any): string {
   if (code === "auth/user-disabled") return "This account has been disabled.";
   if (code === "auth/invalid-verification-code") return "Invalid OTP code entered.";
   if (code === "auth/invalid-verification-id") return "OTP verification session expired.";
+  if (code === "auth/invalid-phone-number") return "Please enter a valid phone number with country code (e.g. +1 234 567 8900).";
   
-  // Return the raw message nicely formatted if not matching our list, removing "Firebase: Error (auth/...)" prefix if it exists
-  const cleanMsg = msg.replace(/^.*?Firebase:\s*/, "").replace(/ \([^)]+\)/, "");
-  return cleanMsg || msg;
+  // Expose the underlying message for easier debugging instead of aggressive masking
+  return msg;
 }
 
 export { auth, analytics }

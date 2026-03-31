@@ -10,30 +10,9 @@ from app.auth.dependencies import require_admin
 from app.domain_types import User
 from app.fs_client import get_store
 from app.firestore_store import Store
+from app.cache import get_cache
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
-
-
-class SimpleCache:
-    def __init__(self, ttl: int = 600):
-        self.ttl = ttl
-        self.cache: dict[str, tuple[float, Any]] = {}
-
-    def get(self, key: str) -> Any | None:
-        if key in self.cache:
-            t, val = self.cache[key]
-            if time.time() - t < self.ttl:
-                return val
-            else:
-                del self.cache[key]
-        return None
-
-    def set(self, key: str, val: Any) -> None:
-        self.cache[key] = (time.time(), val)
-
-
-# 10 minutes cache for analytics
-_analytics_cache = SimpleCache(ttl=600)
 
 
 def _parse_day(ts: str | None) -> date | None:
@@ -48,8 +27,8 @@ def _parse_day(ts: str | None) -> date | None:
 
 def _build_dashboard_summary(store: Store) -> dict:
     import time
-    t_start = time.time()
 
+    t_start = time.time()
 
     today = date.today()
     month_start = today.replace(day=1)
@@ -59,7 +38,6 @@ def _build_dashboard_summary(store: Store) -> dict:
     thirty_days_ago = today - timedelta(days=30)
     thirty_days_str = thirty_days_ago.isoformat()
 
-
     # We discovered ThreadPoolExecutor with Firestore stream() can hang or take >25s due to grpc thread deadlocks or connection saturation on Firebase free tier. Let's do them sequentially.
     total_patients = store.db.collection("patients").count().get()[0][0].value
 
@@ -67,41 +45,62 @@ def _build_dashboard_summary(store: Store) -> dict:
 
     total_hospitals = store.db.collection("hospitals").count().get()[0][0].value
 
-    appts_today = store.db.collection("appointments").where("appointment_date", "==", today_str).count().get()[0][0].value
+    appts_today = (
+        store.db.collection("appointments")
+        .where("appointment_date", "==", today_str)
+        .count()
+        .get()[0][0]
+        .value
+    )
 
-    thirty_days_appts = list(store.db.collection("appointments").where("appointment_date", ">=", thirty_days_str).stream())
+    thirty_days_appts = list(
+        store.db.collection("appointments")
+        .where("appointment_date", ">=", thirty_days_str)
+        .stream()
+    )
 
-    thirty_days_inv = list(store.db.collection("invoices").where("created_at", ">=", thirty_days_str).stream())
-
+    thirty_days_inv = list(
+        store.db.collection("invoices")
+        .where("created_at", ">=", thirty_days_str)
+        .stream()
+    )
 
     # Split month vs 30d
 
-    month_appts = [doc for doc in thirty_days_appts if doc.to_dict().get("appointment_date", "") >= month_start_str]
-    month_invoices = [inv for inv in thirty_days_inv if inv.to_dict().get("created_at", "") >= month_start_str]
-
+    month_appts = [
+        doc
+        for doc in thirty_days_appts
+        if doc.to_dict().get("appointment_date", "") >= month_start_str
+    ]
+    month_invoices = [
+        inv
+        for inv in thirty_days_inv
+        if inv.to_dict().get("created_at", "") >= month_start_str
+    ]
 
     # Get recent pending appointments directly from today's/month's stream (it's already in memory!)
     recent_appts = []
 
-    for doc in sorted(month_appts, key=lambda x: x.to_dict().get("created_at", ""), reverse=True):
+    for doc in sorted(
+        month_appts, key=lambda x: x.to_dict().get("created_at", ""), reverse=True
+    ):
         d = doc.to_dict()
         if d.get("status") == "pending":
             recent_appts.append({"id": doc.id, **d})
             if len(recent_appts) >= 10:
                 break
-    
 
     all_docs = store.doctors_list(None)
     doc_map = {str(d["id"]): d for d in all_docs}
-    
 
     for appty in recent_appts:
         # Get doctor name using in-memory map
         doc = doc_map.get(str(appty.get("doctor_id")))
         doc_u = doc.get("_user") if doc else None
-        appty["doctor_name"] = f"Dr. {doc_u['name']}" if (doc_u and 'name' in doc_u) else ""
+        appty["doctor_name"] = (
+            f"Dr. {doc_u['name']}" if (doc_u and "name" in doc_u) else ""
+        )
         appty["payment_amount"] = float(appty.get("payment_amount") or 0)
-
 
     appts_month = len(month_appts)
     no_shows = 0
@@ -114,10 +113,16 @@ def _build_dashboard_summary(store: Store) -> dict:
         if did:
             doctor_counts[str(did)] += 1
 
-    revenue_month = sum(float(inv.to_dict().get("total_amount") or 0) for inv in month_invoices if inv.to_dict().get("status") == "paid")
+    revenue_month = sum(
+        float(inv.to_dict().get("total_amount") or 0)
+        for inv in month_invoices
+        if inv.to_dict().get("status") == "paid"
+    )
     no_show_rate = f"{(no_shows / appts_month * 100):.1f}%" if appts_month > 0 else "0%"
 
-    top_ids = sorted(doctor_counts.keys(), key=lambda k: doctor_counts[k], reverse=True)[:5]
+    top_ids = sorted(
+        doctor_counts.keys(), key=lambda k: doctor_counts[k], reverse=True
+    )[:5]
     top_doctors = []
 
     # Batch get doctors to avoid N+1 over all doctors
@@ -127,17 +132,24 @@ def _build_dashboard_summary(store: Store) -> dict:
         for did in top_ids:
             doctor = top_map.get(did)
             doc_user = doctor.get("_user") if doctor else None
-            top_doctors.append({
-                "doctor_name": f"Dr. {doc_user['name']}" if doc_user and doc_user.get("name") else "",
-                "appointment_count": doctor_counts[did],
-            })
+            top_doctors.append(
+                {
+                    "doctor_name": f"Dr. {doc_user['name']}"
+                    if doc_user and doc_user.get("name")
+                    else "",
+                    "appointment_count": doctor_counts[did],
+                }
+            )
 
     # Process Appt Trend (last 30d)
     appt_counts = defaultdict(int)
     for doc in thirty_days_appts:
         ad = doc.to_dict().get("appointment_date")
-        if ad: appt_counts[ad] += 1
-    appt_trend = [{"date": k, "count": appt_counts[k]} for k in sorted(appt_counts.keys())][-7:] # Just return 7 days for the chart, frontend can filter
+        if ad:
+            appt_counts[ad] += 1
+    appt_trend = [
+        {"date": k, "count": appt_counts[k]} for k in sorted(appt_counts.keys())
+    ][-7:]  # Just return 7 days for the chart, frontend can filter
 
     # Process Revenue Trend (last 30d)
     rev_sums = defaultdict(float)
@@ -158,7 +170,7 @@ def _build_dashboard_summary(store: Store) -> dict:
 
     days_in_month = (today - month_start).days + 1
     utilization = []
-    
+
     # Pre-fetch all availability to avoid N+1 queries
 
     all_avail = list(store.db.collection("doctor_availability").stream())
@@ -175,12 +187,16 @@ def _build_dashboard_summary(store: Store) -> dict:
         slots_per_day = len(avail_by_doc.get(did, []))
         # If no slots defined, assume a default capacity so math works, or use 1
         available = max(1, slots_per_day) * days_in_month
-        utilization.append({
-            "doctor_name": f"Dr. {doc_user.get('name')}" if doc_user else "",
-            "booked_slots": booked,
-            "available_slots": available,
-            "utilization": round(booked / available * 100, 1) if available > 0 else 0,
-        })
+        utilization.append(
+            {
+                "doctor_name": f"Dr. {doc_user.get('name')}" if doc_user else "",
+                "booked_slots": booked,
+                "available_slots": available,
+                "utilization": round(booked / available * 100, 1)
+                if available > 0
+                else 0,
+            }
+        )
 
     data = {
         "overview": {
@@ -196,9 +212,10 @@ def _build_dashboard_summary(store: Store) -> dict:
         "charts": {
             "appointmentsTrend": appt_trend,
             "revenueTrend": rev_trend,
-            "doctorUtilization": utilization
+            "doctorUtilization": utilization,
         },
-        "lastUpdated": datetime.utcnow().isoformat() + "Z"
+        "recentAppointments": recent_appts,
+        "lastUpdated": datetime.utcnow().isoformat() + "Z",
     }
     return data
 
@@ -212,31 +229,54 @@ def get_dashboard_summary(
     """
     Returns pre-aggregated data for the admin dashboard.
     Massively reduces Firestore reads by fetching exactly 1 document caching it.
-    """
-    cache_key = "dashboard_summary"
-    
-    if not force_refresh:
-        cached = _analytics_cache.get(cache_key)
-        if cached:
-            return {"success": True, "data": cached, "source": "memory-cache", "message": "Dashboard fetched from memory cache"}
 
+    Cache hierarchy:
+    1. Global in-memory cache (fastest, shared across requests)
+    2. Firestore SDR document (single read, persists across restarts)
+    3. Full aggregation (slowest, only on force_refresh or cold start)
+    """
+    cache = get_cache()
+
+    if not force_refresh:
+        # Level 1: Check global memory cache
+        cached = cache.get("dashboard", "summary")
+        if cached:
+            return {
+                "success": True,
+                "data": cached,
+                "source": "memory-cache",
+                "message": "Dashboard fetched from memory cache",
+            }
+
+        # Level 2: Check Firestore SDR document
         doc_ref = store.db.collection("dashboard").document("summary").get()
         if doc_ref.exists:
             data = doc_ref.to_dict()
-            # If data is fresh enough (e.g., < 1 hour), return it
-            # For simplicity, we just use it, and rely on an occasional trigger to update it
-            _analytics_cache.set(cache_key, data)
-            return {"success": True, "data": data, "source": "firestore-1-read", "message": "Dashboard fetched from SDR Firestore"}
+            # Store in memory cache for future requests
+            cache.set("dashboard", data, "summary", ttl=600)
+            return {
+                "success": True,
+                "data": data,
+                "source": "firestore-1-read",
+                "message": "Dashboard fetched from SDR Firestore",
+            }
 
-    # Generate data (fallback or cron usage)
+    # Level 3: Generate data (fallback or force_refresh)
     start = time.time()
     data = _build_dashboard_summary(store)
-    
-    # Save SDR to Firestore for future
+
+    # Save SDR to Firestore for future cold starts
     store.db.collection("dashboard").document("summary").set(data)
-    _analytics_cache.set(cache_key, data)
-    
-    return {"success": True, "data": data, "source": "aggregation-engine", "message": f"Generated new summary in {time.time()-start:.2f}s"}
+    # Store in memory cache
+    cache.set("dashboard", data, "summary", ttl=600)
+
+    return {
+        "success": True,
+        "data": data,
+        "source": "aggregation-engine",
+        "message": f"Generated new summary in {time.time() - start:.2f}s",
+    }
+
 
 # To support backward compatibility while making sure it's fast
 @router.get("/overview", response_model=dict)
@@ -245,7 +285,12 @@ def overview(
     _current_user: User = Depends(require_admin),
 ):
     sum_data = get_dashboard_summary(False, store, _current_user)
-    return {"success": True, "data": sum_data["data"].get("overview", {}), "message": "Overview fetched from summary"}
+    return {
+        "success": True,
+        "data": sum_data["data"].get("overview", {}),
+        "message": "Overview fetched from summary",
+    }
+
 
 @router.get("/appointments", response_model=dict)
 def appointment_trend(
@@ -254,7 +299,12 @@ def appointment_trend(
     _current_user: User = Depends(require_admin),
 ):
     sum_data = get_dashboard_summary(False, store, _current_user)
-    return {"success": True, "data": sum_data["data"].get("charts", {}).get("appointmentsTrend", []), "message": "Trend fetched from summary"}
+    return {
+        "success": True,
+        "data": sum_data["data"].get("charts", {}).get("appointmentsTrend", []),
+        "message": "Trend fetched from summary",
+    }
+
 
 @router.get("/revenue", response_model=dict)
 def revenue_trend(
@@ -263,7 +313,12 @@ def revenue_trend(
     _current_user: User = Depends(require_admin),
 ):
     sum_data = get_dashboard_summary(False, store, _current_user)
-    return {"success": True, "data": sum_data["data"].get("charts", {}).get("revenueTrend", []), "message": "Revenue fetched from summary"}
+    return {
+        "success": True,
+        "data": sum_data["data"].get("charts", {}).get("revenueTrend", []),
+        "message": "Revenue fetched from summary",
+    }
+
 
 @router.get("/doctor-utilization", response_model=dict)
 def doctor_utilization(
@@ -271,4 +326,8 @@ def doctor_utilization(
     _current_user: User = Depends(require_admin),
 ):
     sum_data = get_dashboard_summary(False, store, _current_user)
-    return {"success": True, "data": sum_data["data"].get("charts", {}).get("doctorUtilization", []), "message": "Utilization fetched from summary"}
+    return {
+        "success": True,
+        "data": sum_data["data"].get("charts", {}).get("doctorUtilization", []),
+        "message": "Utilization fetched from summary",
+    }

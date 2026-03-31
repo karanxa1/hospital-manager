@@ -16,6 +16,7 @@ export default function Signup() {
   const { loginWithFirebase } = useAuthStore()
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState<"email" | "phone">("email")
+  const [role, setRole] = useState<"patient" | "doctor">("patient")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -24,16 +25,16 @@ export default function Signup() {
   const [otpSent, setOtpSent] = useState(false)
   const [confirmationResult, setConfirmationResult] = useState<any>(null)
 
-  const redirect = (role: string) => {
+  const redirect = (userRole: string) => {
     const r: Record<string, string> = { admin: "/admin/dashboard", doctor: "/doctor/dashboard", patient: "/patient/dashboard" }
-    navigate(r[role] || "/patient/dashboard", { replace: true })
+    navigate(r[userRole] || "/patient/dashboard", { replace: true })
   }
 
   const handleGoogle = async () => {
     setLoading(true)
     try {
       const { idToken } = await loginWithGoogle()
-      const user = await loginWithFirebase(idToken)
+      const user = await loginWithFirebase(idToken, role)
       toast.success("Account created")
       redirect(user.role)
     } catch (err: any) { toast.error(getAuthErrorMessage(err)) } finally { setLoading(false) }
@@ -46,7 +47,7 @@ export default function Signup() {
     setLoading(true)
     try {
       const { idToken } = await signUpWithEmail(email, password)
-      const user = await loginWithFirebase(idToken)
+      const user = await loginWithFirebase(idToken, role)
       toast.success("Account created")
       redirect(user.role)
     } catch (err: any) { toast.error(getAuthErrorMessage(err)) } finally { setLoading(false) }
@@ -56,11 +57,15 @@ export default function Signup() {
     if (!phone) { toast.error("Enter phone number"); return }
     setLoading(true)
     try {
-      const result = await sendPhoneOtp(phone, "recaptcha-signup")
+      const formattedPhone = phone.startsWith("+") ? phone : `+91${phone.replace(/\D/g, "")}`
+      const result = await sendPhoneOtp(formattedPhone, "recaptcha-signup")
       setConfirmationResult(result)
       setOtpSent(true)
       toast.success("OTP sent")
-    } catch (err: any) { toast.error(getAuthErrorMessage(err)) } finally { setLoading(false) }
+    } catch (err: any) { 
+      console.error("Phone OTP Error:", err);
+      toast.error(getAuthErrorMessage(err)) 
+    } finally { setLoading(false) }
   }
 
   const handleVerifyOtp = async () => {
@@ -68,7 +73,7 @@ export default function Signup() {
     setLoading(true)
     try {
       const { idToken } = await verifyPhoneOtp(confirmationResult, otp)
-      const user = await loginWithFirebase(idToken)
+      const user = await loginWithFirebase(idToken, role)
       toast.success("Account created")
       redirect(user.role)
     } catch (err: any) { toast.error(getAuthErrorMessage(err)) } finally { setLoading(false) }
@@ -81,7 +86,7 @@ export default function Signup() {
         <motion.div className="absolute bottom-20 left-10 w-96 h-96 rounded-full bg-primary/[0.02]" animate={{ scale: [1.2, 1, 1.2], x: [0, 20, 0] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }} />
       </div>
 
-      <div className="flex-1 flex items-center justify-center px-4 relative z-10">
+      <div className="flex-1 flex items-center justify-center px-4 relative z-10 my-10">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="w-full max-w-md">
           <Card className="border-0 shadow-xl">
             <CardHeader className="text-center space-y-1 pb-4">
@@ -92,6 +97,19 @@ export default function Signup() {
               <CardDescription>Get started with Clinic Platform</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              
+              <div className="flex flex-col space-y-2 mb-4">
+                <Label className="text-center font-semibold text-muted-foreground">I am signing up as a:</Label>
+                <div className="flex rounded-lg border p-1 bg-muted/30">
+                  <motion.button whileTap={{ scale: 0.97 }} className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-all duration-200 ${role === "patient" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`} onClick={() => setRole("patient")}>
+                    Patient
+                  </motion.button>
+                  <motion.button whileTap={{ scale: 0.97 }} className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-all duration-200 ${role === "doctor" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`} onClick={() => setRole("doctor")}>
+                    Doctor
+                  </motion.button>
+                </div>
+              </div>
+
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Button variant="outline" className="w-full h-10 gap-2" onClick={handleGoogle} disabled={loading}>
                   <svg className="h-4 w-4" viewBox="0 0 24 24">
@@ -111,7 +129,7 @@ export default function Signup() {
 
               <div className="flex rounded-lg border p-1">
                 {(["email", "phone"] as const).map((t) => (
-                  <motion.button key={t} whileTap={{ scale: 0.97 }} className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-all duration-200 ${tab === t ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`} onClick={() => setTab(t)}>
+                  <motion.button key={t} whileTap={{ scale: 0.97 }} className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-all duration-200 ${tab === t ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`} onClick={() => setTab(t)}>
                     {t === "email" ? "Email" : "Phone"}
                   </motion.button>
                 ))}
@@ -134,7 +152,7 @@ export default function Signup() {
                     </div>
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                       <Button className="w-full" onClick={handleEmail} disabled={loading}>
-                        {loading ? <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 1, repeat: Infinity }}>Creating account...</motion.span> : "Create Account"}
+                        {loading ? <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 1, repeat: Infinity }}>Creating account...</motion.span> : `Sign Up as ${role.charAt(0).toUpperCase() + role.slice(1)}`}
                       </Button>
                     </motion.div>
                   </motion.div>

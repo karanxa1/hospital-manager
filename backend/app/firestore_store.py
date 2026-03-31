@@ -126,6 +126,21 @@ class Store:
             return {"id": doc.id, **(doc.to_dict() or {})}
         return None
 
+    def doctor_ensure(self, user_id: str) -> dict:
+        existing = self.doctor_by_user(user_id)
+        if existing:
+            return existing
+        did = str(uuid.uuid4())
+        data = {
+            "user_id": user_id,
+            "created_at": _now_iso(),
+            "specialization": "General",
+            "consultation_fee": 0,
+            "avg_consultation_minutes": 15,
+        }
+        self.db.collection("doctors").document(did).set(data)
+        return {"id": did, **data}
+
     def doctors_list(self, specialization: str | None = None) -> list[dict]:
         out = []
         doctor_docs = list(self.db.collection("doctors").stream())

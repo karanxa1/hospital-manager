@@ -16,6 +16,7 @@ export default function Login() {
   const { loginWithFirebase } = useAuthStore()
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState<"email" | "phone">("email")
+  const [role, setRole] = useState<"patient" | "doctor">("patient")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [phone, setPhone] = useState("")
@@ -23,16 +24,16 @@ export default function Login() {
   const [otpSent, setOtpSent] = useState(false)
   const [confirmationResult, setConfirmationResult] = useState<any>(null)
 
-  const redirect = (role: string) => {
+  const redirect = (userRole: string) => {
     const r: Record<string, string> = { admin: "/admin/dashboard", doctor: "/doctor/dashboard", patient: "/patient/dashboard" }
-    navigate(r[role] || "/patient/dashboard", { replace: true })
+    navigate(r[userRole] || "/patient/dashboard", { replace: true })
   }
 
   const handleGoogle = async () => {
     setLoading(true)
     try {
       const { idToken } = await loginWithGoogle()
-      const user = await loginWithFirebase(idToken)
+      const user = await loginWithFirebase(idToken, role)
       toast.success("Signed in")
       redirect(user.role)
     } catch (err: any) { toast.error(getAuthErrorMessage(err)) } finally { setLoading(false) }
@@ -43,7 +44,7 @@ export default function Login() {
     setLoading(true)
     try {
       const { idToken } = await loginWithEmail(email, password)
-      const user = await loginWithFirebase(idToken)
+      const user = await loginWithFirebase(idToken, role)
       toast.success("Signed in")
       redirect(user.role)
     } catch (err: any) { toast.error(getAuthErrorMessage(err)) } finally { setLoading(false) }
@@ -53,7 +54,8 @@ export default function Login() {
     if (!phone) { toast.error("Enter phone number"); return }
     setLoading(true)
     try {
-      const result = await sendPhoneOtp(phone, "recaptcha-container")
+      const formattedPhone = phone.startsWith("+") ? phone : `+91${phone.replace(/\D/g, "")}`
+      const result = await sendPhoneOtp(formattedPhone, "recaptcha-container")
       setConfirmationResult(result)
       setOtpSent(true)
       toast.success("OTP sent")
@@ -65,7 +67,7 @@ export default function Login() {
     setLoading(true)
     try {
       const { idToken } = await verifyPhoneOtp(confirmationResult, otp)
-      const user = await loginWithFirebase(idToken)
+      const user = await loginWithFirebase(idToken, role)
       toast.success("Signed in")
       redirect(user.role)
     } catch (err: any) { toast.error(getAuthErrorMessage(err)) } finally { setLoading(false) }
@@ -87,7 +89,7 @@ export default function Login() {
         />
       </div>
 
-      <div className="flex-1 flex items-center justify-center px-4 relative z-10">
+      <div className="flex-1 flex items-center justify-center px-4 relative z-10 my-10">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="w-full max-w-md">
           <Card className="border-0 shadow-xl">
             <CardHeader className="text-center space-y-1 pb-4">
@@ -103,6 +105,19 @@ export default function Login() {
               <CardDescription>Sign in to your account</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              
+              <div className="flex flex-col space-y-2 mb-4">
+                <Label className="text-center font-semibold text-muted-foreground">I am logging in as a:</Label>
+                <div className="flex rounded-lg border p-1 bg-muted/30">
+                  <motion.button whileTap={{ scale: 0.97 }} className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-all duration-200 ${role === "patient" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`} onClick={() => setRole("patient")}>
+                    Patient
+                  </motion.button>
+                  <motion.button whileTap={{ scale: 0.97 }} className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-all duration-200 ${role === "doctor" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`} onClick={() => setRole("doctor")}>
+                    Doctor
+                  </motion.button>
+                </div>
+              </div>
+
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <Button variant="outline" className="w-full h-10 gap-2" onClick={handleGoogle} disabled={loading}>
                   <svg className="h-4 w-4" viewBox="0 0 24 24">
@@ -125,7 +140,7 @@ export default function Login() {
                   <motion.button
                     key={t}
                     whileTap={{ scale: 0.97 }}
-                    className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-all duration-200 ${tab === t ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                    className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-all duration-200 ${tab === t ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                     onClick={() => setTab(t)}
                   >
                     {t === "email" ? "Email" : "Phone"}
@@ -146,7 +161,7 @@ export default function Login() {
                     </div>
                     <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                       <Button className="w-full" onClick={handleEmail} disabled={loading}>
-                        {loading ? <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 1, repeat: Infinity }}>Signing in...</motion.span> : "Sign In"}
+                        {loading ? <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 1, repeat: Infinity }}>Signing in...</motion.span> : `Sign In as ${role.charAt(0).toUpperCase() + role.slice(1)}`}
                       </Button>
                     </motion.div>
                   </motion.div>

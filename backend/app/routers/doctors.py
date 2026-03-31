@@ -52,6 +52,21 @@ def list_doctors(
     }
 
 
+@router.get("/me", response_model=dict)
+def get_me(
+    store: Store = Depends(get_store),
+    current_user: User = Depends(get_current_user),
+):
+    doc = store.doctor_by_user(str(current_user.id))
+    if not doc:
+        raise HTTPException(
+            status_code=404, detail={"success": False, "message": "Doctor profile not found"}
+        )
+    u = store.user_get(doc.get("user_id", ""))
+    row = {**doc, "_user": u or {}}
+    return {"success": True, "data": _doc_row(row), "message": "Doctor profile fetched"}
+
+
 @router.get("/{doctor_id}", response_model=dict)
 def get_doctor(
     doctor_id: UUID,
