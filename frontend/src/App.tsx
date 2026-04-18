@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react"
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { Toaster } from "sonner"
 import { ProtectedRoute } from "@/components/ProtectedRoute"
 import RoleLayout from "@/components/RoleLayout"
+import { ThemeToggle } from "@/components/ThemeToggle"
 
 import Landing from "@/pages/Landing"
 import Login from "@/pages/auth/Login"
@@ -32,7 +34,23 @@ import BillingDashboard from "@/pages/admin/BillingDashboard"
 import AnalyticsDashboard from "@/pages/admin/AnalyticsDashboard"
 import WalkInDesk from "@/pages/admin/WalkInDesk"
 
+type Theme = "light" | "dark"
+
+function getInitialTheme(): Theme {
+  if (typeof document === "undefined") return "dark"
+  return document.documentElement.classList.contains("dark") ? "dark" : "light"
+}
+
 export default function App() {
+  const [theme, setTheme] = useState<Theme>(getInitialTheme)
+
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.toggle("dark", theme === "dark")
+    root.style.colorScheme = theme
+    localStorage.setItem("theme", theme)
+  }, [theme])
+
   return (
     <BrowserRouter>
       <Routes>
@@ -78,7 +96,8 @@ export default function App() {
 
         <Route path="*" element={<NotFound />} />
       </Routes>
-      <Toaster position="top-right" theme="system" />
+      <ThemeToggle theme={theme} onToggle={() => setTheme((current) => current === "dark" ? "light" : "dark")} />
+      <Toaster position="top-right" theme={theme} />
     </BrowserRouter>
   )
 }

@@ -11,7 +11,7 @@ export function BrandLogo({ className, labelClassName, showLabel = true }: Brand
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <img src={logo} alt="Clinic logo" className="h-9 w-9 rounded-xl object-cover" />
-      {showLabel ? <span className={cn("font-semibold tracking-tight text-white", labelClassName)}>Clinic</span> : null}
+      {showLabel ? <span className={cn("font-semibold tracking-tight text-foreground", labelClassName)}>Clinic</span> : null}
     </div>
   )
 }

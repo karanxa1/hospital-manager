@@ -435,8 +435,8 @@ function FeatureCard({
               </div>
               <div className="min-w-0 flex-1">
                 <Badge variant="outline" className="mb-1 text-[10px]">Live preview</Badge>
-                <h3 className="text-sm font-semibold text-white">{feature.title}</h3>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-400">{feature.desc}</p>
+                <h3 className="text-sm font-semibold text-foreground">{feature.title}</h3>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{feature.desc}</p>
               </div>
             </div>
             <Separator />
@@ -533,10 +533,10 @@ function LiveDemosSection() {
         <Badge className="mb-3 border border-transparent bg-primary/15 text-primary hover:bg-primary/20">
           Hands-on
         </Badge>
-        <h2 id="live-demos-heading" className="text-2xl font-bold text-white sm:text-3xl">
+        <h2 id="live-demos-heading" className="text-2xl font-bold text-foreground sm:text-3xl">
           Live product widgets
         </h2>
-        <p className="mx-auto mt-2 max-w-2xl text-sm text-zinc-400">
+        <p className="mx-auto mt-2 max-w-2xl text-sm text-muted-foreground">
           Use the controls below — each block is a real UI pattern from the app (local state only, no API calls).
         </p>
       </motion.div>
@@ -551,8 +551,8 @@ function LiveDemosSection() {
           >
             <Card className="h-full overflow-hidden border border-border bg-card/80 backdrop-blur-md">
               <CardHeader className="border-b border-border/60 bg-muted/25 py-4">
-                <CardTitle className="text-base text-white">{title}</CardTitle>
-                <CardDescription className="text-xs text-zinc-400">{desc}</CardDescription>
+                <CardTitle className="text-base text-foreground">{title}</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">{desc}</CardDescription>
               </CardHeader>
               <CardContent className="p-4">
                 <div className="rounded-lg border border-dashed border-primary/20 bg-muted/10 p-3">
@@ -577,10 +577,10 @@ function CapabilitiesSection() {
           viewport={{ once: true }}
           className="mb-8 text-center"
         >
-          <h2 id="capabilities-heading" className="text-xl font-bold text-white sm:text-2xl">
+          <h2 id="capabilities-heading" className="text-xl font-bold text-foreground sm:text-2xl">
             Platform capabilities
           </h2>
-          <p className="mt-1 text-sm text-zinc-400">What ships in the stack today</p>
+          <p className="mt-1 text-sm text-muted-foreground">What ships in the stack today</p>
         </motion.div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {capabilityItems.map(({ icon: Icon, label }, i) => (
@@ -593,7 +593,7 @@ function CapabilitiesSection() {
               className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card/60 p-4 text-center shadow-none backdrop-blur-sm"
             >
               <Icon className="h-5 w-5 text-primary" />
-              <span className="text-[11px] font-medium leading-tight text-zinc-300 sm:text-xs">{label}</span>
+              <span className="text-[11px] font-medium leading-tight text-foreground/80 sm:text-xs">{label}</span>
             </motion.div>
           ))}
         </div>
@@ -614,10 +614,10 @@ function RolesSection() {
         <div className="mb-2 flex justify-center">
           <Users className="h-8 w-8 text-primary" aria-hidden />
         </div>
-        <h2 id="roles-heading" className="text-2xl font-bold text-white sm:text-3xl">
+        <h2 id="roles-heading" className="text-2xl font-bold text-foreground sm:text-3xl">
           Built for every role
         </h2>
-        <p className="mt-2 text-sm text-zinc-400">One deployment — tailored navigation per role</p>
+        <p className="mt-2 text-sm text-muted-foreground">One deployment — tailored navigation per role</p>
       </motion.div>
       <div className="grid gap-4 md:grid-cols-3">
         {roleBlocks.map((r, i) => {
@@ -634,8 +634,8 @@ function RolesSection() {
                 <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
                   <Icon className="h-5 w-5 text-primary" />
                 </div>
-                <h3 className="font-semibold text-white">{r.title}</h3>
-                <ul className="mt-3 space-y-2 text-sm text-zinc-400">
+                <h3 className="font-semibold text-foreground">{r.title}</h3>
+                <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
                   {r.points.map((p) => (
                     <li key={p} className="flex gap-2">
                       <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
@@ -660,7 +660,7 @@ function FaqSection() {
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
-        className="mb-8 text-center text-2xl font-bold text-white"
+        className="mb-8 text-center text-2xl font-bold text-foreground"
       >
         Questions
       </motion.h2>
@@ -759,15 +759,15 @@ export default function Landing() {
               <motion.h1
                 variants={fadeUp}
                 custom={1}
-                className="text-4xl font-bold tracking-tight text-white sm:text-6xl md:text-7xl md:leading-[1.05]"
+                className="text-4xl font-bold tracking-tight text-foreground sm:text-6xl md:text-7xl md:leading-[1.05]"
               >
                 Run the floor.
                 <br />
-                <span className="mt-1 block bg-gradient-to-r from-white via-white/85 to-zinc-400 bg-clip-text text-transparent">
+                <span className="mt-1 block bg-gradient-to-r from-foreground via-foreground to-muted-foreground bg-clip-text text-transparent">
                   Ship the experience.
                 </span>
               </motion.h1>
-              <motion.p variants={fadeUp} custom={2} className="mx-auto max-w-xl text-sm text-zinc-400 sm:text-base">
+              <motion.p variants={fadeUp} custom={2} className="mx-auto max-w-xl text-sm text-muted-foreground sm:text-base">
                 Scroll to live widgets and module cards — tabs, queue, billing, and records run in the page so you can try the UI before signing in.
               </motion.p>
               <motion.div variants={fadeUp} custom={3} className="flex flex-wrap items-center justify-center gap-3">
@@ -790,7 +790,7 @@ export default function Landing() {
           >
             <Marquee pauseOnHover durationSec={28}>
               {marqueeItems.map((t) => (
-                <span key={t} className="text-xs font-medium text-zinc-400">
+                <span key={t} className="text-xs font-medium text-muted-foreground">
                   {t}
                 </span>
               ))}
@@ -808,8 +808,8 @@ export default function Landing() {
             transition={{ duration: 0.5 }}
             className="mb-10 text-center"
           >
-            <h2 className="text-2xl font-bold text-white sm:text-3xl">All modules</h2>
-            <p className="mt-2 text-sm text-zinc-400">
+            <h2 className="text-2xl font-bold text-foreground sm:text-3xl">All modules</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
               Six areas of the product — each card embeds a working mini UI (scroll down if you are on a small screen).
             </p>
           </motion.div>

@@ -40,4 +40,5 @@ frontend/.env
 
 # Firebase / service account keys
 *service-account*.json
+*service_account*.json
 *firebase-adminsdk*.json

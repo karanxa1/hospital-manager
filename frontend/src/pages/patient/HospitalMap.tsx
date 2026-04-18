@@ -30,6 +30,27 @@ interface Hospital {
   specialties: string[]
 }
 
+function normalizeHospital(raw: any, index: number): Hospital | null {
+  const latitude = Number(raw?.latitude)
+  const longitude = Number(raw?.longitude)
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null
+  }
+
+  return {
+    id: String(raw?.id ?? `hospital-${index}`),
+    name: typeof raw?.name === "string" && raw.name.trim() ? raw.name : "Hospital",
+    address: typeof raw?.address === "string" && raw.address.trim() ? raw.address : "Address unavailable",
+    city: typeof raw?.city === "string" && raw.city.trim() ? raw.city : "",
+    latitude,
+    longitude,
+    specialties: Array.isArray(raw?.specialties)
+      ? raw.specialties.filter((item: unknown): item is string => typeof item === "string" && item.trim().length > 0)
+      : [],
+  }
+}
+
 // Helper component to smoothly move map
 function FlyToLocation({ center }: { center: [number, number] | null }) {
   const map = useMap()
@@ -51,7 +72,8 @@ export default function HospitalMap() {
     const fetchHospitals = async () => {
       try {
         const response = await api.get("/api/v1/hospitals")
-        setHospitals(response.data.data)
+        const payload = Array.isArray(response.data?.data) ? response.data.data : []
+        setHospitals(payload.map(normalizeHospital).filter((hospital: Hospital | null): hospital is Hospital => hospital !== null))
       } catch (err: any) {
         toast.error("Failed to load hospitals data")
       } finally {
@@ -120,7 +142,7 @@ export default function HospitalMap() {
                       <div>
                         <h3 className="font-semibold">{h.name}</h3>
                         <p className="text-sm text-muted-foreground mb-2 mt-1">
-                          {h.address}, {h.city}
+                          {[h.address, h.city].filter(Boolean).join(", ")}
                         </p>
                       </div>
                       <Button
@@ -133,13 +155,15 @@ export default function HospitalMap() {
                         <span className="text-xs font-bold">DIR</span>
                       </Button>
                     </div>
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {h.specialties.map(spec => (
-                        <Badge key={spec} variant="outline" className="text-xs">
-                          {spec}
-                        </Badge>
-                      ))}
-                    </div>
+                    {h.specialties.length > 0 ? (
+                      <div className="mb-3 flex flex-wrap gap-1">
+                        {h.specialties.map(spec => (
+                          <Badge key={spec} variant="outline" className="text-xs">
+                            {spec}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
                     <Button
                       variant="secondary"
                       size="sm"
@@ -207,4 +231,3 @@ export default function HospitalMap() {
     </div>
   )
 }
-
